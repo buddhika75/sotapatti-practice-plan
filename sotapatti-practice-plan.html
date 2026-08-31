@@ -193,6 +193,16 @@
     color: var(--muted);
   }
 
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .footer-actions { display: flex; gap: 8px; }
+
   .reset-btn {
     background: none;
     border: 1px solid var(--rule);
@@ -209,14 +219,54 @@
     color: var(--gold);
   }
 
-  .save-status {
-    font-size: 12px;
-    color: var(--muted);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+  .sync-status { font-size: 12.5px; color: var(--muted); }
+  .sync-status.ok { color: var(--green); }
+  .sync-status.err { color: #A2402A; }
+
+  [hidden] { display: none !important; }
+
+  .sync-panel {
+    margin-top: 16px;
+    padding: 16px 18px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
   }
 
-  .save-status.visible { opacity: 1; }
+  .sync-help {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin: 0 0 12px;
+    line-height: 1.5;
+  }
+
+  .sync-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .sync-field input {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 9px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  .sync-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .sync-test { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -237,9 +287,32 @@
     <div id="phases"></div>
 
     <footer>
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="save-status" id="save-status">Saved</span>
-        <button class="reset-btn" id="reset-btn">Reset progress</button>
+      <div class="footer-row">
+        <span class="sync-status" id="sync-status">Not synced</span>
+        <div class="footer-actions">
+          <button class="reset-btn" id="sync-btn">Set up sync</button>
+          <button class="reset-btn" id="reset-btn">Reset progress</button>
+        </div>
+      </div>
+      <div class="sync-panel" id="sync-panel" hidden>
+        <p class="sync-help">
+          Paste the Web app URL and secret key from your Google Apps Script deployment
+          (see <code>SYNC-SETUP.md</code>). These are stored only in this browser, on this
+          device — do this once per computer.
+        </p>
+        <label class="sync-field">
+          <span>Web app URL</span>
+          <input type="url" id="sync-url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
+        </label>
+        <label class="sync-field">
+          <span>Secret key</span>
+          <input type="password" id="sync-key" placeholder="your secret key" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="sync-panel-actions">
+          <button class="reset-btn" id="sync-save">Connect</button>
+          <button class="reset-btn" id="sync-clear">Disconnect</button>
+          <span class="sync-test" id="sync-test"></span>
+        </div>
       </div>
     </footer>
   </div>
@@ -304,8 +377,104 @@ const PHASES = [
 ];
 
 const STORAGE_KEY = "sotapatti:progress";
-let state = {};
+const SYNC_KEY = "sotapatti:sync-config";
 
+let state = {};
+let stateUpdatedAt = 0;
+let syncConfig = null;
+let saveTimer = null;
+
+/* ---------- local persistence (per-device cache) ---------- */
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && parsed.items) {
+      state = parsed.items || {};
+      stateUpdatedAt = parsed.updatedAt || 0;
+    } else if (parsed && typeof parsed === "object") {
+      state = parsed;            // migrate older flat format
+      stateUpdatedAt = 0;
+    }
+  } catch (e) { /* ignore corrupt cache */ }
+}
+
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state, updatedAt: stateUpdatedAt }));
+  } catch (e) { /* storage unavailable — page still works for this session */ }
+}
+
+/* ---------- sync config (per-device) ---------- */
+function loadSyncConfig() {
+  try {
+    const raw = localStorage.getItem(SYNC_KEY);
+    if (raw) syncConfig = JSON.parse(raw);
+  } catch (e) { syncConfig = null; }
+}
+
+function storeSyncConfig(cfg) {
+  syncConfig = cfg;
+  try {
+    if (cfg) localStorage.setItem(SYNC_KEY, JSON.stringify(cfg));
+    else localStorage.removeItem(SYNC_KEY);
+  } catch (e) { /* ignore */ }
+}
+
+/* ---------- remote sync (Google Apps Script Web App) ---------- */
+function endpoint(action) {
+  const u = new URL(syncConfig.url);
+  u.searchParams.set("key", syncConfig.key);
+  u.searchParams.set("action", action);
+  u.searchParams.set("t", Date.now().toString());   // cache-buster
+  return u.toString();
+}
+
+async function remoteLoad() {
+  const res = await fetch(endpoint("load"), { method: "GET" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const body = await res.json();
+  if (body.error) throw new Error(body.error);
+  const data = body.data || {};
+  return { items: data.items || {}, updatedAt: data.updatedAt || 0 };
+}
+
+async function remoteSave() {
+  // text/plain keeps this a "simple" request (no CORS preflight, which
+  // Apps Script web apps don't answer).
+  const res = await fetch(endpoint("save"), {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ items: state, updatedAt: stateUpdatedAt })
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const body = await res.json();
+  if (body.error) throw new Error(body.error);
+}
+
+function setSync(text, kind) {
+  const el = document.getElementById("sync-status");
+  el.textContent = text;
+  el.className = "sync-status" + (kind ? " " + kind : "");
+}
+
+function scheduleRemoteSave() {
+  if (!syncConfig) return;
+  clearTimeout(saveTimer);
+  setSync("Saving…");
+  saveTimer = setTimeout(async () => {
+    try {
+      await remoteSave();
+      setSync("Synced", "ok");
+    } catch (e) {
+      setSync("Sync failed — saved on this device", "err");
+      console.error("remoteSave", e);
+    }
+  }, 700);
+}
+
+/* ---------- rendering ---------- */
 function totalItems() {
   return PHASES.reduce((sum, p) => sum + p.items.length, 0);
 }
@@ -378,49 +547,105 @@ function render() {
 
 function toggleItem(id, checked, row) {
   state[id] = checked;
+  stateUpdatedAt = Date.now();
   row.classList.toggle("done", checked);
   updateProgress();
-  saveState();
+  saveLocal();
+  scheduleRemoteSave();
 }
 
-function saveState() {
-  const statusEl = document.getElementById("save-status");
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    statusEl.textContent = "Saved";
-    statusEl.classList.add("visible");
-    setTimeout(() => statusEl.classList.remove("visible"), 1200);
-  } catch (e) {
-    statusEl.textContent = "Couldn't save — progress may not persist";
-    statusEl.classList.add("visible");
-    console.error("Storage error:", e);
-  }
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      state = JSON.parse(raw);
-    }
-  } catch (e) {
-    state = {};
-  }
-  render();
-}
-
+/* ---------- reset ---------- */
 document.getElementById("reset-btn").addEventListener("click", () => {
   if (!confirm("Reset all progress? This can't be undone.")) return;
   state = {};
+  stateUpdatedAt = Date.now();
+  saveLocal();
   render();
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch (e) {
-    console.error("Storage error:", e);
+  scheduleRemoteSave();
+});
+
+/* ---------- sync setup panel ---------- */
+const panel = document.getElementById("sync-panel");
+
+document.getElementById("sync-btn").addEventListener("click", () => {
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden && syncConfig) {
+    document.getElementById("sync-url").value = syncConfig.url;
+    document.getElementById("sync-key").value = syncConfig.key;
   }
 });
 
-loadState();
+document.getElementById("sync-save").addEventListener("click", async () => {
+  const url = document.getElementById("sync-url").value.trim();
+  const key = document.getElementById("sync-key").value.trim();
+  const test = document.getElementById("sync-test");
+  if (!url || !key) { test.textContent = "Enter both fields."; return; }
+  test.textContent = "Connecting…";
+  const prev = syncConfig;
+  syncConfig = { url, key };
+  try {
+    const remote = await remoteLoad();
+    const localDone = Object.values(state).filter(Boolean).length;
+    const remoteDone = Object.values(remote.items).filter(Boolean).length;
+    if ((remote.updatedAt || 0) > stateUpdatedAt || remoteDone > localDone) {
+      state = remote.items;
+      stateUpdatedAt = remote.updatedAt || Date.now();
+    } else if (localDone > 0) {
+      stateUpdatedAt = Date.now();
+      await remoteSave();
+    }
+    storeSyncConfig(syncConfig);
+    saveLocal();
+    render();
+    test.textContent = "";
+    panel.hidden = true;
+    setSync("Synced", "ok");
+  } catch (e) {
+    syncConfig = prev;
+    test.textContent = "Couldn't connect: " + e.message;
+    console.error("sync setup", e);
+  }
+});
+
+document.getElementById("sync-clear").addEventListener("click", () => {
+  storeSyncConfig(null);
+  document.getElementById("sync-url").value = "";
+  document.getElementById("sync-key").value = "";
+  document.getElementById("sync-test").textContent = "";
+  setSync("Not synced");
+});
+
+/* ---------- boot ---------- */
+function boot() {
+  loadLocal();
+  loadSyncConfig();
+  render();
+
+  if (!syncConfig) {
+    setSync("Not synced");
+    return;
+  }
+
+  setSync("Syncing…");
+  remoteLoad()
+    .then(remote => {
+      if ((remote.updatedAt || 0) > stateUpdatedAt) {
+        state = remote.items;
+        stateUpdatedAt = remote.updatedAt || 0;
+        saveLocal();
+        render();
+      } else if (stateUpdatedAt > (remote.updatedAt || 0)) {
+        return remoteSave();
+      }
+    })
+    .then(() => setSync("Synced", "ok"))
+    .catch(e => {
+      setSync("Offline — using this device", "err");
+      console.error("boot sync", e);
+    });
+}
+
+boot();
 </script>
 </body>
 </html>

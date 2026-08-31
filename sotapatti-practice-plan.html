@@ -383,10 +383,10 @@ function toggleItem(id, checked, row) {
   saveState();
 }
 
-async function saveState() {
+function saveState() {
   const statusEl = document.getElementById("save-status");
   try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     statusEl.textContent = "Saved";
     statusEl.classList.add("visible");
     setTimeout(() => statusEl.classList.remove("visible"), 1200);
@@ -397,11 +397,11 @@ async function saveState() {
   }
 }
 
-async function loadState() {
+function loadState() {
   try {
-    const result = await window.storage.get(STORAGE_KEY, false);
-    if (result && result.value) {
-      state = JSON.parse(result.value);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      state = JSON.parse(raw);
     }
   } catch (e) {
     state = {};
@@ -409,12 +409,12 @@ async function loadState() {
   render();
 }
 
-document.getElementById("reset-btn").addEventListener("click", async () => {
+document.getElementById("reset-btn").addEventListener("click", () => {
   if (!confirm("Reset all progress? This can't be undone.")) return;
   state = {};
   render();
   try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    localStorage.removeItem(STORAGE_KEY);
   } catch (e) {
     console.error("Storage error:", e);
   }

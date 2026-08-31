@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Path to Sotāpatti</title>
+<style>
+  :root {
+    --ink: #24291F;
+    --paper: #EFEAE0;
+    --paper-raised: #F6F2E9;
+    --rule: #CBC2AA;
+    --gold: #A97A2E;
+    --gold-soft: #E4D3AD;
+    --green: #3C4A3E;
+    --green-soft: #DCE3D9;
+    --muted: #6B6558;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    line-height: 1.5;
+    padding: 40px 20px 80px;
+  }
+
+  .wrap {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 36px;
+  }
+
+  .kicker {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-size: 34px;
+    font-weight: 500;
+    margin: 0 0 12px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 52ch;
+    margin: 0;
+  }
+
+  .progress-panel {
+    margin-top: 28px;
+    padding: 18px 20px;
+    background: var(--paper-raised);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+
+  .progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin-bottom: 10px;
+  }
+
+  .progress-label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .progress-count {
+    font-size: 13px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-track {
+    height: 6px;
+    background: var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  .phase {
+    margin-top: 40px;
+  }
+
+  .phase-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+  }
+
+  .phase-num {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: var(--gold);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .phase-title {
+    font-size: 21px;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .phase-pali {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    margin-left: auto;
+  }
+
+  .phase-desc {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0 0 18px;
+    max-width: 56ch;
+  }
+
+  .item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #DDD6C3;
+  }
+
+  .item:last-child { border-bottom: none; }
+
+  .item input[type="checkbox"] {
+    margin-top: 3px;
+    width: 17px;
+    height: 17px;
+    accent-color: var(--green);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .item-body { flex: 1; }
+
+  .item-title {
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .item.done .item-title {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--rule);
+  }
+
+  .item-note {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 4px 0 0;
+    line-height: 1.45;
+  }
+
+  footer {
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12.5px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .reset-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .save-status {
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .save-status.visible { opacity: 1; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="kicker">A personal practice plan</p>
+      <h1>Path to Sotāpatti</h1>
+      <p class="subtitle">Four phases, not a race — sīla, samādhi, and paññā, worked through in order, checked off as you actually live them rather than as things to finish quickly.</p>
+      <div class="progress-panel">
+        <div class="progress-row">
+          <span class="progress-label">Overall progress</span>
+          <span class="progress-count" id="overall-count">0 / 0</span>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="overall-fill"></div></div>
+      </div>
+    </header>
+
+    <div id="phases"></div>
+
+    <footer>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="save-status" id="save-status">Saved</span>
+        <button class="reset-btn" id="reset-btn">Reset progress</button>
+      </div>
+    </footer>
+  </div>
+
+<script>
+const PHASES = [
+  {
+    id: "p1",
+    num: "Phase One",
+    title: "Foundation",
+    pali: "sīla",
+    desc: "Nothing here is glamorous, but skipping it makes the later phases unstable. The mind can't investigate itself clearly while it's busy managing guilt or harm.",
+    items: [
+      { id: "1-1", title: "Take the five precepts consciously, as a daily commitment, not a formality", note: "Not killing, stealing, sexual misconduct, false speech, intoxicants that cloud the mind. Renew the intention each morning for a week, then let it become quieter background." },
+      { id: "1-2", title: "Find one kalyāṇamitta — a teacher, monk, or experienced practitioner", note: "Someone you can actually ask questions to and who can check your understanding against the texts, even occasionally. Solo practice with no feedback loop is the easiest way to drift." },
+      { id: "1-3", title: "Read the Satipaṭṭhāna Sutta and the Ānāpānasati Sutta once through, slowly", note: "Not for information — read them as instructions, and note where your current understanding is thin." },
+      { id: "1-4", title: "Notice, for one week, where your speech or actions cause even minor harm or regret", note: "Keep it plain: a short private note at day's end. No self-judgment needed, just accurate seeing." },
+      { id: "1-5", title: "Settle a realistic daily practice time and protect it for two weeks straight", note: "Even 20 minutes, same time, every day, matters more than an hour done irregularly." }
+    ]
+  },
+  {
+    id: "p2",
+    num: "Phase Two",
+    title: "Stability",
+    pali: "samādhi",
+    desc: "A mind that can't stay put for more than a few seconds can't look closely at anything. This phase is about building enough steadiness that investigation becomes possible.",
+    items: [
+      { id: "2-1", title: "Establish ānāpānasati (breath awareness) as your base practice", note: "Sit daily. The goal isn't to stop thoughts — it's to notice when attention has wandered and return, patiently, without frustration." },
+      { id: "2-2", title: "Extend sits to 30–45 minutes without needing to move or check the time", note: "This usually takes weeks, not days. Restlessness (uddhacca) and drowsiness (thīna-middha) are the two obstacles to expect — both are normal, not failure." },
+      { id: "2-3", title: "Notice when the mind reaches a period of genuine, unforced calm", note: "You'll recognize it: less commentary, less pulling toward the next thought. Don't chase this state — just learn to recognize it when it arises." },
+      { id: "2-4", title: "Bring the same steadiness into one daily activity outside sitting", note: "Eating, walking, or washing up — done with full, undistracted attention. This is where samādhi stops being a special event and starts being available generally." }
+    ]
+  },
+  {
+    id: "p3",
+    num: "Phase Three",
+    title: "Investigation",
+    pali: "vipassanā",
+    desc: "This is the phase that actually does the work of stream-entry. A stable mind turns toward direct, repeated seeing of anicca, dukkha, and anattā in real experience — not as concepts you agree with, but as things you keep noticing.",
+    items: [
+      { id: "3-1", title: "Watch one sensation (breath, sound, an ache) until you directly see it arise and pass", note: "Not 'the breath is impermanent' as an idea — actually catching a single breath beginning and ending. Repeat often, with different objects." },
+      { id: "3-2", title: "Notice the gap between a sensation and the story you build about it", note: "A itch, then 'I need to scratch this.' A thought, then 'I am the one thinking this.' Watch that second step happen instead of skipping straight to it." },
+      { id: "3-3", title: "Deliberately investigate 'who is aware right now?' during sitting", note: "Not to arrive at a clever answer — to notice that searching for a fixed, findable self behind experience keeps coming up empty." },
+      { id: "3-4", title: "Track moments of clinging or aversion as they happen, in daily life", note: "Not after the fact — in the moment. 'Wanting this to stay' or 'wanting this to go' are both graspable directly, many times a day." },
+      { id: "3-5", title: "Notice at least one moment where insight into anicca/anattā feels obvious rather than reasoned", note: "This tends to arrive quietly, often outside formal sitting. Write down what was actually seen, in plain words, right after it happens." },
+      { id: "3-6", title: "Discuss what's arising with your kalyāṇamitta rather than deciding alone", note: "Especially anything that feels like a breakthrough — this is exactly where outside checking matters most, to avoid mistaking a pleasant state for insight." }
+    ]
+  },
+  {
+    id: "p4",
+    num: "Phase Four",
+    title: "Integration",
+    pali: "—",
+    desc: "Whatever is seen has to hold up outside the cushion. This phase isn't separate from the others — it's the ongoing test of whether the earlier phases actually changed anything.",
+    items: [
+      { id: "4-1", title: "Notice whether doubt about the path itself (vicikicchā) has genuinely eased", note: "Not blind faith — a settled confidence that comes from having verified some of this directly, yourself." },
+      { id: "4-2", title: "Notice whether rituals and rules now make sense as tools, not obligations", note: "Sīlabbata-parāmāsa loosening looks like: you keep the precepts because you understand what they protect, not because you're afraid of breaking a rule." },
+      { id: "4-3", title: "Check whether the sense of a fixed, solid 'self' feels less convincing under stress", note: "The real test isn't during a calm sit — it's during an argument, a loss, a frightening moment. Does the old certainty about 'me' hold up the same way it used to?" },
+      { id: "4-4", title: "Keep practicing without treating this as a finish line to cross", note: "If checking 'have I got it yet' becomes its own anxious habit, that's worth noticing too — it's just more clinging, dressed up as spiritual ambition." }
+    ]
+  }
+];
+
+const STORAGE_KEY = "sotapatti:progress";
+let state = {};
+
+function totalItems() {
+  return PHASES.reduce((sum, p) => sum + p.items.length, 0);
+}
+
+function doneCount() {
+  return Object.values(state).filter(Boolean).length;
+}
+
+function updateProgress() {
+  const total = totalItems();
+  const done = doneCount();
+  document.getElementById("overall-count").textContent = `${done} / ${total}`;
+  document.getElementById("overall-fill").style.width = total ? `${(done / total) * 100}%` : "0%";
+}
+
+function render() {
+  const container = document.getElementById("phases");
+  container.innerHTML = "";
+  PHASES.forEach(phase => {
+    const section = document.createElement("div");
+    section.className = "phase";
+
+    const head = document.createElement("div");
+    head.className = "phase-head";
+    head.innerHTML = `
+      <span class="phase-num">${phase.num}</span>
+      <h2 class="phase-title">${phase.title}</h2>
+      <span class="phase-pali">${phase.pali}</span>
+    `;
+    section.appendChild(head);
+
+    const desc = document.createElement("p");
+    desc.className = "phase-desc";
+    desc.textContent = phase.desc;
+    section.appendChild(desc);
+
+    phase.items.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "item" + (state[item.id] ? " done" : "");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = !!state[item.id];
+      checkbox.id = "chk-" + item.id;
+      checkbox.addEventListener("change", () => toggleItem(item.id, checkbox.checked, row));
+
+      const body = document.createElement("div");
+      body.className = "item-body";
+
+      const title = document.createElement("label");
+      title.className = "item-title";
+      title.htmlFor = "chk-" + item.id;
+      title.textContent = item.title;
+
+      const note = document.createElement("p");
+      note.className = "item-note";
+      note.textContent = item.note;
+
+      body.appendChild(title);
+      body.appendChild(note);
+      row.appendChild(checkbox);
+      row.appendChild(body);
+      section.appendChild(row);
+    });
+
+    container.appendChild(section);
+  });
+  updateProgress();
+}
+
+function toggleItem(id, checked, row) {
+  state[id] = checked;
+  row.classList.toggle("done", checked);
+  updateProgress();
+  saveState();
+}
+
+async function saveState() {
+  const statusEl = document.getElementById("save-status");
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    statusEl.textContent = "Saved";
+    statusEl.classList.add("visible");
+    setTimeout(() => statusEl.classList.remove("visible"), 1200);
+  } catch (e) {
+    statusEl.textContent = "Couldn't save — progress may not persist";
+    statusEl.classList.add("visible");
+    console.error("Storage error:", e);
+  }
+}
+
+async function loadState() {
+  try {
+    const result = await window.storage.get(STORAGE_KEY, false);
+    if (result && result.value) {
+      state = JSON.parse(result.value);
+    }
+  } catch (e) {
+    state = {};
+  }
+  render();
+}
+
+document.getElementById("reset-btn").addEventListener("click", async () => {
+  if (!confirm("Reset all progress? This can't be undone.")) return;
+  state = {};
+  render();
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+  } catch (e) {
+    console.error("Storage error:", e);
+  }
+});
+
+loadState();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+
+# never commit private setup notes (they hold the sync secret)
+*-PRIVATE.md
+*PRIVATE*.md
+sotapatti-tracker-SETUP*.md
